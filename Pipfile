@@ -6,10 +6,14 @@ verify_ssl = true
 [dev-packages]
 boto3 = "*"
 aws-sam-cli = "*"
-locustio = "*"
+click = "*"
+invoke = "*"
 
 [packages]
 aws-xray-sdk = "*"
 
 [requires]
 python_version = "3.7"
+
+[scripts]
+benchmark = "python benchmark.py"

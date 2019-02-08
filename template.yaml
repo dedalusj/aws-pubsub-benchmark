@@ -30,13 +30,8 @@ Resources:
             QueueName: !GetAtt SqsQueue.QueueName
         - KinesisCrudPolicy:
             StreamName: !Ref KinesisStream
-      Events:
-        Fire:
-          Type: Api
-          Properties:
-            Path: /benchmark
-            Method: get
 
+  # SNS topic and consumer
   SnsTopic:
     Type: AWS::SNS::Topic
   SNSFunction:
@@ -49,6 +44,7 @@ Resources:
           Properties:
             Topic: !Ref SnsTopic
 
+  # DynamoDB table and consumer
   DynamoDBTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -73,6 +69,7 @@ Resources:
             StartingPosition: LATEST
             BatchSize: 1
 
+  # SQS queue and consumer
   SqsQueue:
     Type: AWS::SQS::Queue
   SQSQueueFunction:
@@ -86,6 +83,7 @@ Resources:
             Queue: !GetAtt SqsQueue.Arn
             BatchSize: 1
 
+  # Kinesis stream and consumer
   KinesisStream:
     Type: AWS::Kinesis::Stream
     Properties:
@@ -140,5 +138,5 @@ Resources:
       RetentionInDays: 1
       LogGroupName: !Sub "/aws/lambda/${KinesisFunction}"
 Outputs:
-  API:
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/benchmark"
+  LambdaName:
+    Value: !Ref EntryFunction
