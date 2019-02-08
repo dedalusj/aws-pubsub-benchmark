@@ -1,11 +1,11 @@
 -i https://pypi.org/simple
 aws-xray-sdk==2.3.0
-botocore==1.12.86
+botocore==1.12.90
 docutils==0.14
 future==0.17.1
 jmespath==0.9.3
 jsonpickle==1.1
-python-dateutil==2.7.5 ; python_version >= '2.7'
+python-dateutil==2.8.0 ; python_version >= '2.7'
 six==1.12.0
 urllib3==1.24.1 ; python_version >= '3.4'
 wrapt==1.11.1

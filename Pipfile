@@ -6,6 +6,7 @@ verify_ssl = true
 [dev-packages]
 boto3 = "*"
 aws-sam-cli = "*"
+locustio = "*"
 
 [packages]
 aws-xray-sdk = "*"

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -euf -o pipefail
+set -ef -o pipefail
 
 info() {
     echo "INFO: $*" 1>&2
@@ -13,7 +13,6 @@ die() {
 }
 
 PROG_NAME=$(basename $0)
-OUTPUT_FILE=".sam_output.yml"
 STACK_NAME="pubsub-benchmark"
 
 pipenv --version > /dev/null 2>&1 || die "Please install pipenv"
@@ -26,7 +25,7 @@ sub_help(){
 }
   
 sub_run(){
-    [ "$#" -ge 1 ] || die "Missing bucket name. Please use the run command as: $PROG_NAME run <bucket_name>"
+    [[ "$#" -ge 1 ]] || die "Missing bucket name. Please use the run command as: $PROG_NAME run <bucket_name>"
     local S3_BUCKET="$1"
 
     info "Installing python dependencies"
@@ -64,11 +63,7 @@ sub_run(){
     info "Benchmark application deployed and available at [${URL}]"
 
     info "Running load test against [${URL}]"
-    docker run \
-        -e URL=${URL} \
-        -i loadimpact/k6 run \
-        --vus 20 --duration 300s -< k6_benchmark.js \
-        || die "Failed to run load test"
+    URL="${URL}" pipenv run locust -f locustfile.py --no-web -c 20 -r 20 --run-time 5m
 }
   
 sub_clean(){
@@ -84,16 +79,16 @@ sub_clean(){
 }
   
 subcommand=$1
-case $subcommand in
+case ${subcommand} in
     "" | "-h" | "--help")
         sub_help
         ;;
     *)
         shift
         sub_${subcommand} $@
-        if [ $? = 127 ]; then
+        if [[ $? = 127 ]]; then
             echo "Error: '$subcommand' is not a known subcommand." >&2
-            echo "       Run '$PROG_NAME --help' for a list of known subcommands." >&2
+            echo "    Run '$PROG_NAME --help' for a list of known subcommands." >&2
             exit 1
         fi
         ;;
