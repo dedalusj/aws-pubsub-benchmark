@@ -1,0 +1,144 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Globals:
+  Function:
+    Timeout: 30
+    CodeUri: functions/
+    Runtime: python3.7
+    Tracing: Active
+    MemorySize: 1024
+Resources:
+  # entry function responding to the API Gateway request
+  # and performing the fan out to multiple pub/sub and
+  # messaging providers
+  EntryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: app.entry_handler
+      Environment:
+        Variables:
+          TOPIC_ARN: !Ref SnsTopic
+          TABLE_NAME: !Ref DynamoDBTable
+          QUEUE_URL: !Ref SqsQueue
+          STREAM_NAME: !Ref KinesisStream
+      Policies:
+        - SNSPublishMessagePolicy:
+            TopicName: !GetAtt SnsTopic.TopicName
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DynamoDBTable
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt SqsQueue.QueueName
+        - KinesisCrudPolicy:
+            StreamName: !Ref KinesisStream
+      Events:
+        Fire:
+          Type: Api
+          Properties:
+            Path: /benchmark
+            Method: get
+
+  SnsTopic:
+    Type: AWS::SNS::Topic
+  SNSFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: app.sns_handler
+      Events:
+        SNSMessage:
+          Type: SNS
+          Properties:
+            Topic: !Ref SnsTopic
+
+  DynamoDBTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: "id"
+          AttributeType: "S"
+      KeySchema:
+        - AttributeName: "id"
+          KeyType: "HASH"
+      StreamSpecification:
+        StreamViewType: NEW_IMAGE
+  DynamoDBFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: app.dynamodb_handler
+      Events:
+        DynamoDBEvent:
+          Type: DynamoDB
+          Properties:
+            Stream: !GetAtt DynamoDBTable.StreamArn
+            StartingPosition: LATEST
+            BatchSize: 1
+
+  SqsQueue:
+    Type: AWS::SQS::Queue
+  SQSQueueFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: app.sqs_handler
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt SqsQueue.Arn
+            BatchSize: 1
+
+  KinesisStream:
+    Type: AWS::Kinesis::Stream
+    Properties:
+      ShardCount: 40
+  StreamConsumer:
+    Type: AWS::Kinesis::StreamConsumer
+    Properties:
+      StreamARN: !GetAtt KinesisStream.Arn
+      ConsumerName: TestConsumer
+  KinesisFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: app.kinesis_handler
+      Events:
+        KinesisStream:
+          Type: Kinesis
+          Properties:
+            Stream: !GetAtt StreamConsumer.ConsumerARN
+            BatchSize: 1
+            StartingPosition: LATEST
+
+  # the log groups are created manually so that they will be
+  # cleaned up when the cloud formation stack is deleted
+  EntryFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DependsOn: EntryFunction
+    Properties:
+      RetentionInDays: 1
+      LogGroupName: !Sub "/aws/lambda/${EntryFunction}"
+  SNSFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DependsOn: SNSFunction
+    Properties:
+      RetentionInDays: 1
+      LogGroupName: !Sub "/aws/lambda/${SNSFunction}"
+  DynamoDBFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DependsOn: DynamoDBFunction
+    Properties:
+      RetentionInDays: 1
+      LogGroupName: !Sub "/aws/lambda/${DynamoDBFunction}"
+  SQSQueueFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DependsOn: SQSQueueFunction
+    Properties:
+      RetentionInDays: 1
+      LogGroupName: !Sub "/aws/lambda/${SQSQueueFunction}"
+  KinesisFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DependsOn: KinesisFunction
+    Properties:
+      RetentionInDays: 1
+      LogGroupName: !Sub "/aws/lambda/${KinesisFunction}"
+Outputs:
+  API:
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/benchmark"
