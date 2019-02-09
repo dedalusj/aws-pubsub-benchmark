@@ -1,12 +1,24 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
+Parameters:
+  Shards:
+    Type: Number
+    Default: 50
+    Description: Number of shardes to use for the Kinesis stream
+    MinValue: 1
+    MaxValue: 100
+  Memory:
+    Type: Number
+    Default: 1024
+    Description: Memory allocated for the lambda functions
+    AllowedValues: [128, 256, 512, 1024, 2048]
 Globals:
   Function:
     Timeout: 30
     CodeUri: functions/
     Runtime: python3.7
     Tracing: Active
-    MemorySize: 1024
+    MemorySize: !Ref Memory
 Resources:
   # entry function responding to the API Gateway request
   # and performing the fan out to multiple pub/sub and
@@ -87,7 +99,7 @@ Resources:
   KinesisStream:
     Type: AWS::Kinesis::Stream
     Properties:
-      ShardCount: 40
+      ShardCount: !Ref Shards
   StreamConsumer:
     Type: AWS::Kinesis::StreamConsumer
     Properties:

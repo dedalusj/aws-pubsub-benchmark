@@ -51,8 +51,6 @@ def entry_handler(event, _):
         PartitionKey=str(uuid.uuid4())
         )
 
-    return {"statusCode": 200, "body": ""}
-
 
 def sns_handler(event, _):
     message = json.loads(event['Records'][0]['Sns']['Message'])
