@@ -57,7 +57,7 @@ def sns_handler(event, _):
     segment = Segment('sns_benchmark', traceid=message['trace_id'], parent_id=message['id'], sampled=True)
     segment.start_time = message['start_time']
     segment.put_annotation('scope', 'benchmark')
-    segment.put_annotation('category', 'sns')
+    segment.put_annotation('service', 'sns')
     segment.close()
     xray_client.put_trace_segments(TraceSegmentDocuments=[segment.serialize()])
 
@@ -67,7 +67,7 @@ def dynamodb_handler(event, _):
     segment = Segment('dynamodb_benchmark', traceid=message['trace_id']['S'], parent_id=message['id']['S'], sampled=True)
     segment.start_time = float(message['start_time']['N'])
     segment.put_annotation('scope', 'benchmark')
-    segment.put_annotation('category', 'dynamodb')
+    segment.put_annotation('service', 'dynamodb')
     segment.close()
     xray_client.put_trace_segments(TraceSegmentDocuments=[segment.serialize()])
 
@@ -77,7 +77,7 @@ def sqs_handler(event, _):
     segment = Segment('sqs_benchmark', traceid=message['trace_id'], parent_id=message['id'], sampled=True)
     segment.start_time = message['start_time']
     segment.put_annotation('scope', 'benchmark')
-    segment.put_annotation('category', 'sqs')
+    segment.put_annotation('service', 'sqs')
     segment.close()
     xray_client.put_trace_segments(TraceSegmentDocuments=[segment.serialize()])
 
@@ -87,6 +87,6 @@ def kinesis_handler(event, _):
     segment = Segment('kinesis_benchmark', traceid=message['trace_id'], parent_id=message['id'], sampled=True)
     segment.start_time = message['start_time']
     segment.put_annotation('scope', 'benchmark')
-    segment.put_annotation('category', 'kinesis')
+    segment.put_annotation('service', 'kinesis')
     segment.close()
     xray_client.put_trace_segments(TraceSegmentDocuments=[segment.serialize()])

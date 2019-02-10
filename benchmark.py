@@ -29,8 +29,8 @@ _MAX_BATCH_SIZE = 5
 _DEFAULT_STACK_NAME = 'pubsub-benchmark'
 _DEFAULT_MEMORY = 512
 _DEFAULT_SHARDS = 5
-_DEFAULT_DURATION = 300
-_DEFAULT_CALLS_PER_SECOND = 20
+_DEFAULT_DURATION = 300.0
+_DEFAULT_CALLS_PER_SECOND = 20.0
 _DEFAULT_BENCHMARK_DISCARDED_PERCENT = 0.3
 
 cloudformation_client = boto3.client('cloudformation')
@@ -265,11 +265,12 @@ def get_dataframe(segments):
 def compute_service_stats(df):
     """Compute relevant latency statistics by pub/sub system"""
     def compute(group):
-        return {'count': int(group.count()), 'mean': group.mean(), 'p25': group.min(), 'p50': group.median(),
+        return {'count': int(group.count()), 'mean': group.mean(), 'p50': group.median(),
                 'p75': group.quantile(q=0.75), 'p90': group.quantile(q=0.90), 'p95': group.quantile(q=0.95)}
 
-    stats = df['duration'].groupby(df['category']).apply(compute).unstack()
+    stats = df['duration'].groupby(df['service']).apply(compute).unstack()
     stats.loc[:, stats.columns != 'count'] = stats.loc[:, stats.columns != 'count'] * 1000.0
+    stats['count'] = stats['count'].astype('int')
     return stats
 
 
@@ -284,8 +285,7 @@ def get_stats(duration=_DEFAULT_DURATION, discarded=_DEFAULT_BENCHMARK_DISCARDED
     trace_ids = get_trace_ids(start_time, end_time)
     segments = get_segments(trace_ids)
     df = get_dataframe(segments)
-    stats = compute_service_stats(df)
-    print(stats)
+    return compute_service_stats(df)
 
 
 @click.command()
@@ -296,9 +296,9 @@ def get_stats(duration=_DEFAULT_DURATION, discarded=_DEFAULT_BENCHMARK_DISCARDED
               show_default=True, help='Memory allocated for the lambda functions', callback=validate_memory)
 @click.option('--stack-name', type=click.STRING, default=_DEFAULT_STACK_NAME,
               show_default=True, help='Named of the cloudformation stack created for the benchmark')
-@click.option('--rate', type=click.STRING, default=f'{_DEFAULT_CALLS_PER_SECOND}/s', show_default=True,
+@click.option('--rate', type=click.STRING, default=f'{int(_DEFAULT_CALLS_PER_SECOND)}/s', show_default=True,
               callback=validate_rate, help='Rate of messages delivered to the pub sub queues')
-@click.option('--duration', type=click.STRING, default=f'{_DEFAULT_DURATION}s', show_default=True,
+@click.option('--duration', type=click.STRING, default=f'{int(_DEFAULT_DURATION)}s', show_default=True,
               callback=validate_duration, help='Duration of the benchmark')
 @click.option('--discarded', type=click.FLOAT, default=_DEFAULT_BENCHMARK_DISCARDED_PERCENT, show_default=True,
               help='Percentage, between 0 and 1, of traces to be discarded from the beginning of the benchmark')
@@ -319,7 +319,9 @@ def cli(bucket, shards, memory, stack_name, rate, duration, discarded, debug):
     deploy_lambda_functions(shards=shards, memory=memory, stack_name=stack_name)
 
     run_benchmark(rate, duration=duration, stack_name=stack_name)
-    get_stats(duration=duration, discarded=discarded)
+    stats = get_stats(duration=duration, discarded=discarded)
+    logging.info(f'Latency statistics -- AWS Lambda memory [{memory}] -- Kinesis shards [{shards}]')
+    print(stats)
 
     delete_stack(stack_name=stack_name)
     wait_for_stack_deletion(stack_name=stack_name)
