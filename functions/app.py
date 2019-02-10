@@ -13,7 +13,7 @@ patch(('boto3',))
 xray_client = boto3.client('xray')
 
 
-def entry_handler(event, _):
+def fanout_handler(event, _):
     print(f'Event:\n{json.dumps(event)}')
     current_segment = xray_recorder.current_segment()
 
@@ -54,31 +54,39 @@ def entry_handler(event, _):
 
 def sns_handler(event, _):
     message = json.loads(event['Records'][0]['Sns']['Message'])
-    segment = Segment('sns_delivery', traceid=message['trace_id'], parent_id=message['id'], sampled=True)
+    segment = Segment('sns_benchmark', traceid=message['trace_id'], parent_id=message['id'], sampled=True)
     segment.start_time = message['start_time']
+    segment.put_annotation('scope', 'benchmark')
+    segment.put_annotation('category', 'sns')
     segment.close()
     xray_client.put_trace_segments(TraceSegmentDocuments=[segment.serialize()])
 
 
 def dynamodb_handler(event, _):
     message = event['Records'][0]['dynamodb']['NewImage']
-    segment = Segment('dynamodb_delivery', traceid=message['trace_id']['S'], parent_id=message['id']['S'], sampled=True)
+    segment = Segment('dynamodb_benchmark', traceid=message['trace_id']['S'], parent_id=message['id']['S'], sampled=True)
     segment.start_time = float(message['start_time']['N'])
+    segment.put_annotation('scope', 'benchmark')
+    segment.put_annotation('category', 'dynamodb')
     segment.close()
     xray_client.put_trace_segments(TraceSegmentDocuments=[segment.serialize()])
 
 
 def sqs_handler(event, _):
     message = json.loads(event['Records'][0]['body'])
-    segment = Segment('sqs_delivery', traceid=message['trace_id'], parent_id=message['id'], sampled=True)
+    segment = Segment('sqs_benchmark', traceid=message['trace_id'], parent_id=message['id'], sampled=True)
     segment.start_time = message['start_time']
+    segment.put_annotation('scope', 'benchmark')
+    segment.put_annotation('category', 'sqs')
     segment.close()
     xray_client.put_trace_segments(TraceSegmentDocuments=[segment.serialize()])
 
 
 def kinesis_handler(event, _):
     message = json.loads(base64.b64decode(event['Records'][0]['kinesis']['data']))
-    segment = Segment('kinesis  _delivery', traceid=message['trace_id'], parent_id=message['id'], sampled=True)
+    segment = Segment('kinesis_benchmark', traceid=message['trace_id'], parent_id=message['id'], sampled=True)
     segment.start_time = message['start_time']
+    segment.put_annotation('scope', 'benchmark')
+    segment.put_annotation('category', 'kinesis')
     segment.close()
     xray_client.put_trace_segments(TraceSegmentDocuments=[segment.serialize()])

@@ -3,7 +3,7 @@ Transform: AWS::Serverless-2016-10-31
 Parameters:
   Shards:
     Type: Number
-    Default: 50
+    Default: 5
     Description: Number of shardes to use for the Kinesis stream
     MinValue: 1
     MaxValue: 100
@@ -23,10 +23,10 @@ Resources:
   # entry function responding to the API Gateway request
   # and performing the fan out to multiple pub/sub and
   # messaging providers
-  EntryFunction:
+  FanOutFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: app.entry_handler
+      Handler: app.fanout_handler
       Environment:
         Variables:
           TOPIC_ARN: !Ref SnsTopic
@@ -119,12 +119,12 @@ Resources:
 
   # the log groups are created manually so that they will be
   # cleaned up when the cloud formation stack is deleted
-  EntryFunctionLogGroup:
+  FanOutFunctionLogGroup:
     Type: AWS::Logs::LogGroup
-    DependsOn: EntryFunction
+    DependsOn: FanOutFunction
     Properties:
       RetentionInDays: 1
-      LogGroupName: !Sub "/aws/lambda/${EntryFunction}"
+      LogGroupName: !Sub "/aws/lambda/${FanOutFunction}"
   SNSFunctionLogGroup:
     Type: AWS::Logs::LogGroup
     DependsOn: SNSFunction
@@ -151,4 +151,4 @@ Resources:
       LogGroupName: !Sub "/aws/lambda/${KinesisFunction}"
 Outputs:
   LambdaName:
-    Value: !Ref EntryFunction
+    Value: !Ref FanOutFunction

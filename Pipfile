@@ -8,6 +8,7 @@ boto3 = "*"
 aws-sam-cli = "*"
 click = "*"
 invoke = "*"
+pandas = "*"
 
 [packages]
 aws-xray-sdk = "*"
